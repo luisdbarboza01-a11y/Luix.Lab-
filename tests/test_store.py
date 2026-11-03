@@ -23,6 +23,7 @@ class StoreTests(unittest.TestCase):
         self.registry = self.root / "tasks" / "registry.json"
         self.events = self.root / "logs" / "events.jsonl"
         self.registry.parent.mkdir(parents=True)
+        self.events.parent.mkdir(parents=True)
         self.registry.write_text(json.dumps({"registry_version": "1.0", "tasks": []}), encoding="utf-8")
         self.events.write_text("", encoding="utf-8")
 
