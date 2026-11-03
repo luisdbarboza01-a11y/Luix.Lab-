@@ -1,0 +1,92 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from engine.coordinator import audit, read_events, read_registry, validate_event, validate_task
+
+
+def task(status="draft"):
+    return {
+        "task_id": "TST-001",
+        "title": "Test task",
+        "objective": "Verify event replay",
+        "permissions": [],
+        "constraints": ["No external actions"],
+        "deliverables": ["Audit result"],
+        "acceptance_criteria": ["Status matches replay"],
+        "owner": "coordinator",
+        "status": status,
+        "protocol_version": "1.0",
+    }
+
+
+def event(event_id, event_type, before, after, evidence=None):
+    return {
+        "event_id": event_id,
+        "timestamp_utc": "2026-11-03T12:00:00Z",
+        "task_id": "TST-001",
+        "event_type": event_type,
+        "from_status": before,
+        "to_status": after,
+        "actor_id": "test-runner",
+        "channel": "unit-test",
+        "evidence_refs": evidence or [],
+        "details": "Controlled test event",
+    }
+
+
+class CoordinatorTests(unittest.TestCase):
+    def test_valid_task(self):
+        self.assertEqual(validate_task(task()), [])
+
+    def test_invalid_task_id(self):
+        bad = task()
+        bad["task_id"] = "bad id"
+        self.assertTrue(validate_task(bad))
+
+    def test_valid_event(self):
+        self.assertEqual(validate_event(event("EVT-000001", "queued", "draft", "queued")), [])
+
+    def test_valid_transition_replay(self):
+        events = [event("EVT-000001", "queued", "draft", "queued")]
+        self.assertEqual(audit({"tasks": [task("queued")]}, events), [])
+
+    def test_sent_without_evidence_fails(self):
+        events = [
+            event("EVT-000001", "queued", "draft", "queued"),
+            event("EVT-000002", "sent", "queued", "sent"),
+        ]
+        issues = audit({"tasks": [task("sent")]}, events)
+        self.assertTrue(any("evidence required" in issue for issue in issues))
+
+    def test_illegal_transition_fails(self):
+        events = [event("EVT-000001", "accepted", "draft", "accepted", ["review.md"])]
+        issues = audit({"tasks": [task("accepted")]}, events)
+        self.assertTrue(any("illegal transition" in issue for issue in issues))
+
+    def test_duplicate_task_id_fails(self):
+        issues = audit({"tasks": [task(), task()]}, [])
+        self.assertTrue(any("duplicate task_id" in issue for issue in issues))
+
+    def test_registry_must_match_event_replay(self):
+        events = [event("EVT-000001", "queued", "draft", "queued")]
+        issues = audit({"tasks": [task("draft")]}, events)
+        self.assertTrue(any("differs from event replay" in issue for issue in issues))
+
+    def test_duplicate_event_id_fails(self):
+        ev = event("EVT-000001", "queued", "draft", "queued")
+        issues = audit({"tasks": [task("queued")]}, [ev, ev])
+        self.assertTrue(any("duplicate event_id" in issue for issue in issues))
+
+    def test_readers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "registry.json").write_text(json.dumps({"tasks": []}), encoding="utf-8")
+            (root / "events.jsonl").write_text("", encoding="utf-8")
+            self.assertEqual(read_registry(root / "registry.json")["tasks"], [])
+            self.assertEqual(read_events(root / "events.jsonl"), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
