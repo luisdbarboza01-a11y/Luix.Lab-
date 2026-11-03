@@ -95,11 +95,24 @@ def validate_task(task: dict[str, Any]) -> list[str]:
     task_id = task.get("task_id")
     if task_id is not None and (not isinstance(task_id, str) or not TASK_ID_RE.fullmatch(task_id)):
         errors.append("task_id must match PREFIX-000")
+    for field in ("title", "objective", "owner"):
+        if field in task and (not isinstance(task[field], str) or not task[field].strip()):
+            errors.append(f"{field} must be a non-empty string")
     if task.get("status") not in STATUSES:
         errors.append("invalid task status")
     for field in ("permissions", "constraints", "deliverables", "acceptance_criteria"):
-        if field in task and not isinstance(task[field], list):
-            errors.append(f"{field} must be an array")
+        if field in task:
+            if not isinstance(task[field], list):
+                errors.append(f"{field} must be an array")
+            elif any(not isinstance(item, str) or not item.strip() for item in task[field]):
+                errors.append(f"{field} must contain only non-empty strings")
+    criteria = task.get("acceptance_criteria")
+    if isinstance(criteria, list) and len(criteria) != len(set(criteria)):
+        errors.append("acceptance_criteria must not contain duplicates")
+    if "assigned_agent" in task and task["assigned_agent"] is not None and (
+        not isinstance(task["assigned_agent"], str) or not task["assigned_agent"].strip()
+    ):
+        errors.append("assigned_agent must be null or a non-empty string")
     if task.get("protocol_version") != "1.0":
         errors.append("protocol_version must be 1.0")
     return errors
@@ -119,10 +132,22 @@ def validate_event(event: dict[str, Any]) -> list[str]:
         errors.append("invalid event task_id")
     if event.get("event_type") not in EVENT_TO_STATUS:
         errors.append("invalid event_type")
-    if "evidence_refs" in event and not isinstance(event["evidence_refs"], list):
-        errors.append("evidence_refs must be an array")
+    for field in ("actor_id", "channel", "details"):
+        if field in event and (not isinstance(event[field], str) or not event[field].strip()):
+            errors.append(f"{field} must be a non-empty string")
+    if "evidence_refs" in event:
+        refs = event["evidence_refs"]
+        if not isinstance(refs, list):
+            errors.append("evidence_refs must be an array")
+        elif any(not isinstance(ref, str) or not ref.strip() for ref in refs):
+            errors.append("evidence_refs must contain only non-empty strings")
+    for field in ("from_status", "to_status"):
+        if field in event and event[field] is not None and event[field] not in STATUSES:
+            errors.append(f"{field} must be a valid status")
     try:
-        datetime.fromisoformat(str(event.get("timestamp_utc", "")).replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(str(event.get("timestamp_utc", "")).replace("Z", "+00:00"))
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            errors.append("timestamp_utc must include a timezone")
     except ValueError:
         errors.append("timestamp_utc must be ISO-8601")
     return errors
