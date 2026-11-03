@@ -2,14 +2,16 @@
 
 Infraestructura experimental para coordinar tareas de investigación asistida por IA con trazabilidad, revisión independiente y control de permisos.
 
-## Estado actual
+## Estado verificado
 
-- GitHub conectado con acceso de lectura/escritura verificado.
-- Proyecto Deepnote `Luix° AI Network` existente.
-- Arquitectura v1 documentada en Deepnote.
-- Protocolo de tareas en preparación.
+- GitHub conectado con acceso de lectura/escritura.
+- Motor interno v1 implementado: registro, transiciones, cola de despacho, recepción de entregas y revisión independiente.
+- Pruebas unitarias e integrales: **33/33 aprobadas** en la última ejecución de Deepnote.
+- Auditoría del historial: disponible mediante `python -m engine.coordinator`.
+- Integración continua: workflow añadido en `.github/workflows/ci.yml` para ejecutar pruebas y auditoría en cada push a `main` y en pull requests.
 - Comunicación autónoma entre agentes: **no verificada**.
-- Integraciones de proyecto Deepnote: ninguna confirmada.
+- Sincronización automática GitHub–Deepnote: **no implementada**.
+- Integración de mensajería con agentes externos: **pendiente de un canal/API compatible**.
 
 ## Principios
 
@@ -28,9 +30,20 @@ Infraestructura experimental para coordinar tareas de investigación asistida po
 - `tasks/reviews/`: auditorías independientes.
 - `agents/`: perfiles y responsabilidades.
 - `logs/`: registros verificables de eventos y pruebas.
+- `engine/`: motor de coordinación y validación.
+- `tests/`: pruebas unitarias e integrales.
 
-## Flujo previsto
+## Flujo interno implementado
 
-Coordinación → tarea identificada → recepción confirmada → ejecución autorizada → entrega → auditoría → registro.
+Creación → cola → paquete de despacho preparado → registro de envío/recepción → ejecución declarada → entrega estructurada → revisión independiente → aceptación/rechazo.
 
-Este flujo es el diseño objetivo. Cada transición debe probarse antes de considerarse operativa.
+**Importante:** el paquete de despacho se prepara, pero el motor todavía no envía mensajes a un agente externo. Los estados de envío, recepción y ejecución requieren evidencia externa válida.
+
+## Pruebas
+
+```bash
+python -m unittest discover -s tests -v
+python -m engine.coordinator
+```
+
+La suite cubre estructura, unicidad, transiciones, evidencia, cola, entregas, revisión independiente y ciclo integral. La aprobación de pruebas de software no certifica por sí sola la validez científica de los resultados entregados por agentes.
