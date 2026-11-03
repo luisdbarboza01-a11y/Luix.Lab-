@@ -1,10 +1,11 @@
-import csv
 import hashlib
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from laboratorio_autonomo.lab import LabError, profile_csv, write_outputs
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lab import LabError, profile_csv, write_outputs
 
 
 class OfflineLabTests(unittest.TestCase):
