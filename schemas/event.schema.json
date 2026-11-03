@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://luix-lab.local/schemas/event.schema.json",
+  "title": "Luix AI Network Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "timestamp_utc",
+    "task_id",
+    "event_type",
+    "actor_id",
+    "channel",
+    "evidence_refs",
+    "details"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "pattern": "^EVT-[0-9]{6,}$" },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "task_id": { "type": "string", "pattern": "^[A-Z]{2,8}-[0-9]{3,6}$" },
+    "event_type": {
+      "type": "string",
+      "enum": ["task_created", "queued", "sent", "received", "started", "blocked", "submitted", "review_started", "accepted", "rejected", "cancelled", "conflict_detected"]
+    },
+    "from_status": { "type": ["string", "null"] },
+    "to_status": { "type": ["string", "null"] },
+    "actor_id": { "type": "string", "minLength": 1 },
+    "channel": { "type": "string", "minLength": 1 },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "details": { "type": "string" }
+  }
+}
