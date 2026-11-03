@@ -88,5 +88,28 @@ class CoordinatorTests(unittest.TestCase):
             self.assertEqual(read_events(root / "events.jsonl"), [])
 
 
+    def test_complete_task_lifecycle(self):
+        events = [
+            event("EVT-000001", "task_created", "draft", "draft"),
+            event("EVT-000002", "queued", "draft", "queued"),
+            event("EVT-000003", "sent", "queued", "sent", ["message-log#1"]),
+            event("EVT-000004", "received", "sent", "received", ["agent-reply#1"]),
+            event("EVT-000005", "started", "received", "in_progress", ["agent-reply#1"]),
+            event("EVT-000006", "submitted", "in_progress", "submitted", ["delivery#1"]),
+            event("EVT-000007", "review_started", "submitted", "under_review"),
+            event("EVT-000008", "accepted", "under_review", "accepted", ["review#1"]),
+        ]
+        self.assertEqual(audit({"tasks": [task("accepted")]}, events), [])
+
+    def test_complete_lifecycle_rejects_missing_receipt_evidence(self):
+        events = [
+            event("EVT-000001", "queued", "draft", "queued"),
+            event("EVT-000002", "sent", "queued", "sent", ["message-log#1"]),
+            event("EVT-000003", "received", "sent", "received"),
+        ]
+        issues = audit({"tasks": [task("received")]}, events)
+        self.assertTrue(any("evidence required" in issue for issue in issues))
+
+
 if __name__ == "__main__":
     unittest.main()
