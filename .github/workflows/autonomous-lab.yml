@@ -1,0 +1,27 @@
+name: Luix Lab Autonomo v1
+
+on:
+  push:
+    branches: [laboratorio-autonomo-v1]
+  pull_request:
+    branches: [laboratorio-autonomo-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run offline tests
+        run: python -m unittest discover -s laboratorio-autonomo/tests -v
+      - name: Run synthetic example
+        run: python laboratorio-autonomo/run_lab.py laboratorio-autonomo/examples/sample.csv --output /tmp/luix-lab-output
+      - name: Verify generated artifacts
+        run: test -s /tmp/luix-lab-output/profile.json && test -s /tmp/luix-lab-output/report.md
