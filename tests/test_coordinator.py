@@ -48,6 +48,27 @@ class CoordinatorTests(unittest.TestCase):
     def test_valid_event(self):
         self.assertEqual(validate_event(event("EVT-000001", "queued", "draft", "queued")), [])
 
+    def test_task_rejects_blank_owner_and_non_string_permissions(self):
+        bad = task()
+        bad["owner"] = "  "
+        bad["permissions"] = ["read-only", 7]
+        self.assertTrue(any("owner must be a non-empty string" in e for e in validate_task(bad)))
+        self.assertTrue(any("permissions must contain only non-empty strings" in e for e in validate_task(bad)))
+
+    def test_task_rejects_duplicate_acceptance_criteria(self):
+        bad = task()
+        bad["acceptance_criteria"] = ["same", "same"]
+        self.assertTrue(any("must not contain duplicates" in e for e in validate_task(bad)))
+
+    def test_event_rejects_timezone_free_timestamp(self):
+        bad = event("EVT-000001", "queued", "draft", "queued")
+        bad["timestamp_utc"] = "2026-11-03T12:00:00"
+        self.assertTrue(any("must include a timezone" in e for e in validate_event(bad)))
+
+    def test_event_rejects_blank_evidence_reference(self):
+        bad = event("EVT-000001", "sent", "queued", "sent", ["  "])
+        self.assertTrue(any("evidence_refs must contain only non-empty strings" in e for e in validate_event(bad)))
+
     def test_valid_transition_replay(self):
         events = [event("EVT-000001", "queued", "draft", "queued")]
         self.assertEqual(audit({"tasks": [task("queued")]}, events), [])
